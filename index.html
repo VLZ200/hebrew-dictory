@@ -4108,7 +4108,8 @@ mark.search-hit.active {
         <h3>📌 История версий</h3>
 
         <div style="margin-bottom:16px;padding:14px;background:linear-gradient(135deg,rgba(34,197,94,.1),rgba(96,165,250,.1));border-radius:12px;">
-<div style="font-weight:700;color:var(--green);margin-bottom:8px;">v34.83 — Истории: поиск, чекбоксы, скролл плеера</div>
+<div style="font-weight:700;color:var(--green);margin-bottom:8px;">v34.84 — Android: фикс TTS в Chrome (задержка загрузки голосов)
+v34.83 — Истории: поиск, чекбоксы, скролл плеера</div>
 <ul style="margin:0 0 12px;padding-left:18px;font-size:.9rem;">
   <li><strong>Поиск в тексте</strong> — исправлен CSS-селектор: добавлены <code>.mt-he-text</code> и <code>.mt-ru-text</code>. Раньше поиск находил текст только в режиме Историй (классы <code>.story-he/.story-ru</code>), а в «Мой текст» всегда возвращал 0</li>
   <li><strong>Чекбоксы Иврит/Русский</strong> — <code>setMyTextVis</code> теперь сама определяет активный result div по активной панели. Раньше полагалась на <code>_lastRenderArgs</code>, который мог указывать на скрытый myTextResult</li>
@@ -6121,7 +6122,7 @@ function miniRecClearBlob() {
 }
 
 // ==================== VERSION ====================
-const APP_VERSION = 'v34.83';
+const APP_VERSION = 'v34.84';
 const APP_RELEASE_NOTE = 'Истории: поиск, чекбоксы, скролл плеера';
 
 // ==================== STATE ====================
@@ -18190,8 +18191,13 @@ function speakHebrew(text, onDone) {
   clean = clean.replace(/\s+/g, ' ').trim();
   if (!clean) { if (onDone) onDone(); return; }
 
-  // Try Google TTS first, fall back to Web Speech API
-  _speakGoogleTTS(clean, onDone);
+  // On HTTPS (GitHub Pages) Google TTS is blocked by CORS — use Web Speech API first
+  const isHttps = location.protocol === 'https:';
+  if (isHttps) {
+    _speakWebSpeech(clean, onDone);
+  } else {
+    _speakGoogleTTS(clean, onDone);
+  }
 }
 
 function _speakGoogleTTS(text, onDone) {
@@ -18249,16 +18255,27 @@ function _speakGoogleTTS(text, onDone) {
 function _speakWebSpeech(text, onDone) {
   if (!window.speechSynthesis) { if (onDone) onDone(); return; }
   window.speechSynthesis.cancel();
-  const utt = new SpeechSynthesisUtterance(text);
-  utt.lang = 'he-IL';
-  utt.rate = 0.9;
-  // Try to find Hebrew voice
+
+  function doSpeak() {
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.lang = 'he-IL';
+    utt.rate = 0.9;
+    // Try to find Hebrew voice
+    const voices = window.speechSynthesis.getVoices();
+    const heVoice = voices.find(v => v.lang && v.lang.startsWith('he'));
+    if (heVoice) utt.voice = heVoice;
+    utt.onend = () => { if (onDone) onDone(); };
+    utt.onerror = () => { if (onDone) onDone(); };
+    window.speechSynthesis.speak(utt);
+  }
+
+  // Android Chrome: voices may not be ready yet — retry after short delay
   const voices = window.speechSynthesis.getVoices();
-  const heVoice = voices.find(v => v.lang && v.lang.startsWith('he'));
-  if (heVoice) utt.voice = heVoice;
-  utt.onend = () => { if (onDone) onDone(); };
-  utt.onerror = () => { if (onDone) onDone(); };
-  window.speechSynthesis.speak(utt);
+  if (voices.length > 0) {
+    doSpeak();
+  } else {
+    setTimeout(doSpeak, 250);
+  }
 }
 
 
