@@ -2803,6 +2803,8 @@ mark.search-hit.active {
     <h1>מילון אישי</h1>
     <p>Персональный словарь иврита с AI-дополнением</p>
     <p id="appVersionLine" style="font-size:.72rem;color:var(--text3);margin-top:2px;">Загрузка…</p>
+    <p id="ttsDiagLine" style="font-size:.72rem;color:var(--text3);margin-top:2px;display:none;"></p>
+    <button onclick="ttsDiag()" style="font-size:.72rem;padding:2px 8px;margin-top:4px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);cursor:pointer;">🔊 Тест TTS</button>
   </header>
 
   <div class="nav-bar">
@@ -18397,6 +18399,36 @@ function formatAIReply(text) {
 if (window.speechSynthesis) {
   window.speechSynthesis.getVoices();
   window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+}
+
+function ttsDiag() {
+  const diag = document.getElementById('ttsDiagLine');
+  diag.style.display = '';
+  diag.textContent = 'Проверяю…';
+
+  if (!window.speechSynthesis) {
+    diag.textContent = '❌ speechSynthesis не поддерживается';
+    return;
+  }
+
+  const protocol = location.protocol;
+  const voices = window.speechSynthesis.getVoices();
+  const heVoices = voices.filter(v => v.lang && v.lang.startsWith('he'));
+  const allLangs = [...new Set(voices.map(v => v.lang))].join(', ') || 'нет голосов';
+
+  diag.textContent = `protocol: ${protocol} | голосов: ${voices.length} | he: ${heVoices.length} | языки: ${allLangs.slice(0,80)}`;
+
+  // Try to actually speak
+  setTimeout(() => {
+    const utt = new SpeechSynthesisUtterance('שלום');
+    utt.lang = 'he-IL';
+    if (heVoices.length) utt.voice = heVoices[0];
+    utt.onstart = () => { diag.textContent += ' | ▶ говорит'; };
+    utt.onend = () => { diag.textContent += ' ✅'; };
+    utt.onerror = (e) => { diag.textContent += ` ❌ ошибка: ${e.error}`; };
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utt);
+  }, 300);
 }
 
 // ==================== HELPERS ====================
