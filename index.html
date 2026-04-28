@@ -18270,13 +18270,8 @@ function _speakWebSpeech(text, onDone) {
     window.speechSynthesis.speak(utt);
   }
 
-  // Android Chrome: voices may not be ready yet — retry after short delay
-  const voices = window.speechSynthesis.getVoices();
-  if (voices.length > 0) {
-    doSpeak();
-  } else {
-    setTimeout(doSpeak, 250);
-  }
+  // Android Chrome: after cancel(), need a small delay before speak()
+  setTimeout(doSpeak, 100);
 }
 
 
