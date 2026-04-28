@@ -6133,7 +6133,7 @@ function miniRecClearBlob() {
 }
 
 // ==================== VERSION ====================
-const APP_VERSION = 'v34.86';
+const APP_VERSION = 'v34.87';
 const APP_RELEASE_NOTE = 'Android: загрузка аудиофайлов';
 
 // ==================== STATE ====================
@@ -13705,7 +13705,8 @@ function audioPlayerRenderUploadRow(slowMeta, normMeta, commMeta) {
 function audioUploadTrigger(track) {
   const input = document.createElement('input');
   input.type = 'file';
-  // No accept= attribute: Android Chrome restricts to camera/gallery with accept=audio/*
+  // Explicit mime types (not audio/*) to avoid Android Chrome opening camera/recorder
+  input.accept = 'audio/mpeg,audio/mp4,audio/ogg,audio/wav,audio/aac,audio/flac,audio/webm,audio/x-m4a';
   input.style.display = 'none';
   input.onchange = (e) => { audioLoadFile(e, track); document.body.removeChild(input); };
   document.body.appendChild(input);
