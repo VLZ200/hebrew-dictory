@@ -4108,9 +4108,12 @@ mark.search-hit.active {
         <h3>📌 История версий</h3>
 
         <div style="margin-bottom:16px;padding:14px;background:linear-gradient(135deg,rgba(34,197,94,.1),rgba(96,165,250,.1));border-radius:12px;">
-<div style="font-weight:700;color:var(--green);margin-bottom:8px;">v34.85 — Android: TTS через Web Speech API на HTTPS
-v34.84 — Android: фикс TTS в Chrome (задержка загрузки голосов)
-v34.83 — Истории: поиск, чекбоксы, скролл плеера</div>
+<div style="font-weight:700;color:var(--green);margin-bottom:8px;"><div style="font-weight:700;color:var(--green);margin-bottom:8px;">v34.85 — Фикс: кнопка «Разметка аудио» после Focus Reader; TTS на Android (HTTPS)</div>
+  <ul style="margin:0;padding-left:18px;font-size:.82rem;">
+  <li>После выхода из Focus Reader кнопка «Разметка аудио» теперь восстанавливается</li>
+  <li>TTS на GitHub Pages (https:) использует Web Speech API вместо Google TTS</li>
+  </ul>
+<div style="font-weight:700;color:var(--green);margin-bottom:8px;">v34.83 — Истории: поиск, чекбоксы, скролл плеера</div>
 <ul style="margin:0 0 12px;padding-left:18px;font-size:.9rem;">
   <li><strong>Поиск в тексте</strong> — исправлен CSS-селектор: добавлены <code>.mt-he-text</code> и <code>.mt-ru-text</code>. Раньше поиск находил текст только в режиме Историй (классы <code>.story-he/.story-ru</code>), а в «Мой текст» всегда возвращал 0</li>
   <li><strong>Чекбоксы Иврит/Русский</strong> — <code>setMyTextVis</code> теперь сама определяет активный result div по активной панели. Раньше полагалась на <code>_lastRenderArgs</code>, который мог указывать на скрытый myTextResult</li>
@@ -18123,6 +18126,9 @@ function closeFocusReader() {
       if (rd && rd.innerHTML.trim()) {
         if (rd.style.display === 'none') rd.style.display = 'block';
         refreshMyTextDisplay(true);
+        // Restore audio markup button if story has markup
+        try { audioMarkupCheckButton(); } catch(e) {}
+        try { videoCommentaryUpdateBtn(); } catch(e) {}
         // Re-sync player state onto freshly-rendered DOM
         if (window._storyPlayer?.active) {
           storyPlayerHighlight();
@@ -18275,6 +18281,7 @@ function _speakWebSpeech(text, onDone) {
 }
 
 
+
 let aiChatHistory = [];
 
 function toggleAIChat() {
@@ -18393,36 +18400,6 @@ function formatAIReply(text) {
 if (window.speechSynthesis) {
   window.speechSynthesis.getVoices();
   window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
-}
-
-function ttsDiag() {
-  const diag = document.getElementById('ttsDiagLine');
-  diag.style.display = '';
-  diag.textContent = 'Проверяю…';
-
-  if (!window.speechSynthesis) {
-    diag.textContent = '❌ speechSynthesis не поддерживается';
-    return;
-  }
-
-  const protocol = location.protocol;
-  const voices = window.speechSynthesis.getVoices();
-  const heVoices = voices.filter(v => v.lang && v.lang.startsWith('he'));
-  const allLangs = [...new Set(voices.map(v => v.lang))].join(', ') || 'нет голосов';
-
-  diag.textContent = `protocol: ${protocol} | голосов: ${voices.length} | he: ${heVoices.length} | языки: ${allLangs.slice(0,80)}`;
-
-  // Try to actually speak
-  setTimeout(() => {
-    const utt = new SpeechSynthesisUtterance('שלום');
-    utt.lang = 'he-IL';
-    if (heVoices.length) utt.voice = heVoices[0];
-    utt.onstart = () => { diag.textContent += ' | ▶ говорит'; };
-    utt.onend = () => { diag.textContent += ' ✅'; };
-    utt.onerror = (e) => { diag.textContent += ` ❌ ошибка: ${e.error}`; };
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utt);
-  }, 300);
 }
 
 // ==================== HELPERS ====================
