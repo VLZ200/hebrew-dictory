@@ -4108,11 +4108,15 @@ mark.search-hit.active {
         <h3>📌 История версий</h3>
 
         <div style="margin-bottom:16px;padding:14px;background:linear-gradient(135deg,rgba(34,197,94,.1),rgba(96,165,250,.1));border-radius:12px;">
-<div style="font-weight:700;color:var(--green);margin-bottom:8px;"><div style="font-weight:700;color:var(--green);margin-bottom:8px;">v34.85 — Фикс: кнопка «Разметка аудио» после Focus Reader; TTS на Android (HTTPS)</div>
+<div style="font-weight:700;color:var(--green);margin-bottom:8px;">v34.85 — Фикс: кнопка «Разметка аудио» после Focus Reader</div>
   <ul style="margin:0;padding-left:18px;font-size:.82rem;">
-  <li>После выхода из Focus Reader кнопка «Разметка аудио» теперь восстанавливается</li>
-  <li>TTS на GitHub Pages (https:) использует Web Speech API вместо Google TTS</li>
+  <li>После выхода из Focus Reader кнопка «Разметка аудио» теперь восстанавливается корректно</li>
   </ul>
+<div style="font-weight:700;color:var(--green);margin-bottom:8px;">v34.84 — Android: загрузка аудиофайлов</div>
+<ul style="margin:0 0 12px;padding-left:18px;font-size:.9rem;">
+  <li>Кнопки «➕ 🐢 Медленно», «➕ 🚶 Нормально», «➕ 📝 Разбор» переделаны на динамическое создание <code>input[type=file]</code> через <code>audioUploadTrigger()</code> — паттерн как у импорта JSON. Старая схема <code>&lt;input&gt;</code> внутри <code>&lt;label&gt;</code> с <code>display:none</code> не открывала файловый менеджер на Android</li>
+</ul>
+
 <div style="font-weight:700;color:var(--green);margin-bottom:8px;">v34.83 — Истории: поиск, чекбоксы, скролл плеера</div>
 <ul style="margin:0 0 12px;padding-left:18px;font-size:.9rem;">
   <li><strong>Поиск в тексте</strong> — исправлен CSS-селектор: добавлены <code>.mt-he-text</code> и <code>.mt-ru-text</code>. Раньше поиск находил текст только в режиме Историй (классы <code>.story-he/.story-ru</code>), а в «Мой текст» всегда возвращал 0</li>
@@ -6127,7 +6131,7 @@ function miniRecClearBlob() {
 
 // ==================== VERSION ====================
 const APP_VERSION = 'v34.85';
-const APP_RELEASE_NOTE = 'Истории: поиск, чекбоксы, скролл плеера';
+const APP_RELEASE_NOTE = 'Android: загрузка аудиофайлов';
 
 // ==================== STATE ====================
 let words = [];
@@ -13634,10 +13638,9 @@ function audioUploadBtn(track, meta) {
   if (meta) return `
     <span style="font-size:.78rem;color:var(--text3);">${label}: ${esc(meta.name)}</span>
     <button class="audio-ctrl-btn" onclick="audioDeleteFile('${track}')" style="padding:3px 8px;font-size:.78rem;color:var(--red);">🗑</button>`;
-  return `<label class="audio-ctrl-btn" style="cursor:pointer;" title="Добавить ${label}">
+  return `<button class="audio-ctrl-btn" style="cursor:pointer;" title="Добавить ${label}" onclick="audioUploadTrigger('${track}')">
     ➕ ${label}
-    <input type="file" accept="audio/*" style="display:none;" onchange="audioLoadFile(event,'${track}')">
-  </label>`;
+  </button>`;
 }
 
 function audioPlayerRenderBody(slowMeta, normMeta, commMeta) {
@@ -13694,6 +13697,16 @@ function audioPlayerRenderUploadRow(slowMeta, normMeta, commMeta) {
       ${audioUploadBtn('normal',      normMeta)}
       ${audioUploadBtn('commentary',  commMeta)}
     </div>`;
+}
+
+function audioUploadTrigger(track) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'audio/*';
+  input.style.display = 'none';
+  input.onchange = (e) => { audioLoadFile(e, track); document.body.removeChild(input); };
+  document.body.appendChild(input);
+  input.click();
 }
 
 async function audioLoadFile(event, track) {
@@ -18198,13 +18211,8 @@ function speakHebrew(text, onDone) {
   clean = clean.replace(/\s+/g, ' ').trim();
   if (!clean) { if (onDone) onDone(); return; }
 
-  // On HTTPS (GitHub Pages) Google TTS is blocked by CORS — use Web Speech API first
-  const isHttps = location.protocol === 'https:';
-  if (isHttps) {
-    _speakWebSpeech(clean, onDone);
-  } else {
-    _speakGoogleTTS(clean, onDone);
-  }
+  // Try Google TTS first, fall back to Web Speech API
+  _speakGoogleTTS(clean, onDone);
 }
 
 function _speakGoogleTTS(text, onDone) {
@@ -18261,24 +18269,18 @@ function _speakGoogleTTS(text, onDone) {
 
 function _speakWebSpeech(text, onDone) {
   if (!window.speechSynthesis) { if (onDone) onDone(); return; }
-
-  function doSpeak() {
-    window.speechSynthesis.cancel();
-    const utt = new SpeechSynthesisUtterance(text);
-    utt.lang = 'he-IL';
-    utt.rate = 0.9;
-    const voices = window.speechSynthesis.getVoices();
-    const heVoice = voices.find(v => v.lang && v.lang.startsWith('he'));
-    if (heVoice) utt.voice = heVoice;
-    utt.onend = () => { if (onDone) onDone(); };
-    utt.onerror = (e) => { if (onDone) onDone(); };
-    window.speechSynthesis.speak(utt);
-  }
-
-  // Android Chrome: small delay ensures speak() is accepted after page interaction
-  setTimeout(doSpeak, 150);
+  window.speechSynthesis.cancel();
+  const utt = new SpeechSynthesisUtterance(text);
+  utt.lang = 'he-IL';
+  utt.rate = 0.9;
+  // Try to find Hebrew voice
+  const voices = window.speechSynthesis.getVoices();
+  const heVoice = voices.find(v => v.lang && v.lang.startsWith('he'));
+  if (heVoice) utt.voice = heVoice;
+  utt.onend = () => { if (onDone) onDone(); };
+  utt.onerror = () => { if (onDone) onDone(); };
+  window.speechSynthesis.speak(utt);
 }
-
 
 
 let aiChatHistory = [];
