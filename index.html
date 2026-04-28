@@ -18261,23 +18261,22 @@ function _speakGoogleTTS(text, onDone) {
 
 function _speakWebSpeech(text, onDone) {
   if (!window.speechSynthesis) { if (onDone) onDone(); return; }
-  window.speechSynthesis.cancel();
 
   function doSpeak() {
+    window.speechSynthesis.cancel();
     const utt = new SpeechSynthesisUtterance(text);
     utt.lang = 'he-IL';
     utt.rate = 0.9;
-    // Try to find Hebrew voice
     const voices = window.speechSynthesis.getVoices();
     const heVoice = voices.find(v => v.lang && v.lang.startsWith('he'));
     if (heVoice) utt.voice = heVoice;
     utt.onend = () => { if (onDone) onDone(); };
-    utt.onerror = () => { if (onDone) onDone(); };
+    utt.onerror = (e) => { if (onDone) onDone(); };
     window.speechSynthesis.speak(utt);
   }
 
-  // Android Chrome: after cancel(), need a small delay before speak()
-  setTimeout(doSpeak, 100);
+  // Android Chrome: small delay ensures speak() is accepted after page interaction
+  setTimeout(doSpeak, 150);
 }
 
 
