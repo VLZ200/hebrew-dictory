@@ -4108,10 +4108,6 @@ mark.search-hit.active {
         <h3>📌 История версий</h3>
 
         <div style="margin-bottom:16px;padding:14px;background:linear-gradient(135deg,rgba(34,197,94,.1),rgba(96,165,250,.1));border-radius:12px;">
-<div style="font-weight:700;color:var(--green);margin-bottom:8px;">v34.85 — Фикс: кнопка «Разметка аудио» после Focus Reader</div>
-  <ul style="margin:0;padding-left:18px;font-size:.82rem;">
-  <li>После выхода из Focus Reader кнопка «Разметка аудио» теперь восстанавливается корректно</li>
-  </ul>
 <div style="font-weight:700;color:var(--green);margin-bottom:8px;">v34.84 — Android: загрузка аудиофайлов</div>
 <ul style="margin:0 0 12px;padding-left:18px;font-size:.9rem;">
   <li>Кнопки «➕ 🐢 Медленно», «➕ 🚶 Нормально», «➕ 📝 Разбор» переделаны на динамическое создание <code>input[type=file]</code> через <code>audioUploadTrigger()</code> — паттерн как у импорта JSON. Старая схема <code>&lt;input&gt;</code> внутри <code>&lt;label&gt;</code> с <code>display:none</code> не открывала файловый менеджер на Android</li>
@@ -6130,7 +6126,7 @@ function miniRecClearBlob() {
 }
 
 // ==================== VERSION ====================
-const APP_VERSION = 'v34.85';
+const APP_VERSION = 'v34.84';
 const APP_RELEASE_NOTE = 'Android: загрузка аудиофайлов';
 
 // ==================== STATE ====================
@@ -18139,9 +18135,6 @@ function closeFocusReader() {
       if (rd && rd.innerHTML.trim()) {
         if (rd.style.display === 'none') rd.style.display = 'block';
         refreshMyTextDisplay(true);
-        // Restore audio markup button if story has markup
-        try { audioMarkupCheckButton(); } catch(e) {}
-        try { videoCommentaryUpdateBtn(); } catch(e) {}
         // Re-sync player state onto freshly-rendered DOM
         if (window._storyPlayer?.active) {
           storyPlayerHighlight();
