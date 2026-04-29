@@ -3536,9 +3536,7 @@ mark.search-hit.active {
           <button class="btn btn-primary btn-sm" onclick="fullExport()">📦 Экспорт всего</button>
           <button class="btn btn-ghost btn-sm" onclick="document.getElementById('fullImportFile').click()">📦 Импорт из файла</button>
           <input type="file" id="fullImportFile" accept=".json" style="display:none" onchange="fullImport(event)">
-          <input type="file" id="audioUploadSlow"        style="display:none" onchange="audioLoadFile(event,'slow');        this.value='';">
-          <input type="file" id="audioUploadNormal"      style="display:none" onchange="audioLoadFile(event,'normal');      this.value='';">
-          <input type="file" id="audioUploadCommentary"  style="display:none" onchange="audioLoadFile(event,'commentary');  this.value='';">
+
 
         </div>
       </div>
@@ -4115,6 +4113,10 @@ mark.search-hit.active {
         <h3>📌 История версий</h3>
 
         <div style="margin-bottom:16px;padding:14px;background:linear-gradient(135deg,rgba(34,197,94,.1),rgba(96,165,250,.1));border-radius:12px;">
+<div style="font-weight:700;color:var(--green);margin-bottom:8px;">v34.91 — Android: input внутри label для загрузки аудио</div>
+<ul style="margin:0 0 12px;padding-left:18px;font-size:.9rem;">
+  <li>Кнопки добавления аудио переделаны: поле выбора файла теперь находится прямо внутри кнопки-label, без атрибута <code>for</code> и без JS. Это максимально нативная HTML-конструкция — должна открывать файловый менеджер на Android.</li>
+</ul>
 <div style="font-weight:700;color:var(--green);margin-bottom:8px;">v34.90 — Android: кнопки загрузки аудио через label</div>
 <ul style="margin:0 0 12px;padding-left:18px;font-size:.9rem;">
   <li>Кнопки «➕ 🐢 Медленно», «➕ 🚶 Нормально», «➕ 📝 Разбор» переделаны в HTML-элементы <code>&lt;label for=...&gt;</code>, связанные напрямую со скрытыми полями выбора файла. Теперь нажатие кнопки активирует файловый пикер напрямую без JS-посредника — Android Chrome больше не должен блокировать открытие файлового менеджера.</li>
@@ -6149,7 +6151,7 @@ function miniRecClearBlob() {
 }
 
 // ==================== VERSION ====================
-const APP_VERSION = 'v34.90';
+const APP_VERSION = 'v34.91';
 const APP_RELEASE_NOTE = 'Android: загрузка аудиофайлов';
 
 // ==================== STATE ====================
@@ -13657,9 +13659,9 @@ function audioUploadBtn(track, meta) {
   if (meta) return `
     <span style="font-size:.78rem;color:var(--text3);">${label}: ${esc(meta.name)}</span>
     <button class="audio-ctrl-btn" onclick="audioDeleteFile('${track}')" style="padding:3px 8px;font-size:.78rem;color:var(--red);">🗑</button>`;
-  const inputId = track === 'slow' ? 'audioUploadSlow' : track === 'normal' ? 'audioUploadNormal' : 'audioUploadCommentary';
-  return `<label for="${inputId}" class="audio-ctrl-btn" style="cursor:pointer;display:inline-block;" title="Добавить ${label}">
+  return `<label class="audio-ctrl-btn" style="cursor:pointer;display:inline-block;" title="Добавить ${label}">
     ➕ ${label}
+    <input type="file" style="display:none;position:absolute;width:0;height:0;" onchange="audioLoadFile(event,'${track}');this.value='';">
   </label>`;
 }
 
