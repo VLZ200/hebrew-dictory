@@ -4113,6 +4113,10 @@ mark.search-hit.active {
         <h3>📌 История версий</h3>
 
         <div style="margin-bottom:16px;padding:14px;background:linear-gradient(135deg,rgba(34,197,94,.1),rgba(96,165,250,.1));border-radius:12px;">
+<div style="font-weight:700;color:var(--green);margin-bottom:8px;">v34.92 — Загрузка аудио по URL</div>
+<ul style="margin:0 0 12px;padding-left:18px;font-size:.9rem;">
+  <li>Рядом с каждой кнопкой добавления аудио (🐢 Медленно, 🚶 Нормально, 📝 Разбор) появилась кнопка 🔗. При нажатии открывается строка ввода прямой ссылки на mp3-файл. После подтверждения (Enter или ✓) файл загружается и сохраняется как обычно. Решение для Android/Xiaomi где file picker не открывает файловый менеджер.</li>
+</ul>
 <div style="font-weight:700;color:var(--green);margin-bottom:8px;">v34.91 — Android: input внутри label для загрузки аудио</div>
 <ul style="margin:0 0 12px;padding-left:18px;font-size:.9rem;">
   <li>Кнопки добавления аудио переделаны: поле выбора файла теперь находится прямо внутри кнопки-label, без атрибута <code>for</code> и без JS. Это максимально нативная HTML-конструкция — должна открывать файловый менеджер на Android.</li>
@@ -6151,7 +6155,7 @@ function miniRecClearBlob() {
 }
 
 // ==================== VERSION ====================
-const APP_VERSION = 'v34.91';
+const APP_VERSION = 'v34.92';
 const APP_RELEASE_NOTE = 'Android: загрузка аудиофайлов';
 
 // ==================== STATE ====================
@@ -13659,10 +13663,12 @@ function audioUploadBtn(track, meta) {
   if (meta) return `
     <span style="font-size:.78rem;color:var(--text3);">${label}: ${esc(meta.name)}</span>
     <button class="audio-ctrl-btn" onclick="audioDeleteFile('${track}')" style="padding:3px 8px;font-size:.78rem;color:var(--red);">🗑</button>`;
-  return `<label class="audio-ctrl-btn" style="cursor:pointer;display:inline-block;" title="Добавить ${label}">
-    ➕ ${label}
-    <input type="file" style="display:none;position:absolute;width:0;height:0;" onchange="audioLoadFile(event,'${track}');this.value='';">
-  </label>`;
+  return `
+    <label class="audio-ctrl-btn" style="cursor:pointer;display:inline-block;" title="Добавить файл: ${label}">
+      ➕ ${label}
+      <input type="file" style="display:none;position:absolute;width:0;height:0;" onchange="audioLoadFile(event,'${track}');this.value='';">
+    </label>
+    <button class="audio-ctrl-btn" onclick="audioUrlPrompt('${track}')" style="padding:3px 8px;font-size:.85rem;" title="Добавить по ссылке: ${label}">🔗</button>`;
 }
 
 function audioPlayerRenderBody(slowMeta, normMeta, commMeta) {
@@ -13723,6 +13729,66 @@ function audioPlayerRenderUploadRow(slowMeta, normMeta, commMeta) {
 
 function audioUploadTrigger(track) {
   // Kept for compatibility — actual upload is triggered via <label for=...> in audioUploadBtn
+}
+
+function audioUrlPrompt(track) {
+  const label = track === 'slow' ? '🐢 Медленно' : track === 'normal' ? '🚶 Нормально' : '📝 Разбор';
+  const row = document.getElementById('audioUploadRow');
+  if (!row) return;
+  // If already open for this track — close
+  const existing = document.getElementById('audioUrlInput_' + track);
+  if (existing) { existing.closest('.audio-url-row') && existing.closest('.audio-url-row').remove(); return; }
+  const div = document.createElement('div');
+  div.className = 'audio-url-row';
+  div.style.cssText = 'display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:nowrap;';
+  div.innerHTML = `
+    <input id="audioUrlInput_${track}" type="url" placeholder="https://...mp3" autocomplete="off"
+      style="flex:1;min-width:0;padding:5px 8px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:.85rem;"
+      onkeydown="if(event.key==='Enter')audioLoadUrl('${track}');if(event.key==='Escape')this.closest('.audio-url-row').remove();">
+    <button class="audio-ctrl-btn" onclick="audioLoadUrl('${track}')" style="padding:4px 10px;flex-shrink:0;">✓</button>
+    <button class="audio-ctrl-btn" onclick="this.closest('.audio-url-row').remove()" style="padding:4px 8px;flex-shrink:0;color:var(--text3);">✕</button>`;
+  row.appendChild(div);
+  div.querySelector('input').focus();
+}
+
+async function audioLoadUrl(track) {
+  const input = document.getElementById('audioUrlInput_' + track);
+  if (!input) return;
+  const url = input.value.trim();
+  if (!url) { toast('⚠️ Введите ссылку'); return; }
+  const textId = window._audioPlayer.textId;
+  if (!textId) return;
+
+  // Extract filename from URL
+  const fileName = url.split('?')[0].split('/').pop() || ('audio_' + track + '.mp3');
+  const key = audioTrackKey(textId, track);
+
+  input.disabled = true;
+  toast('⏳ Загрузка по ссылке...');
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const buf = await resp.arrayBuffer();
+    await audioDbSet('files', key,           buf);
+    await audioDbSet('files', key + '_meta', { name: fileName, size: buf.byteLength });
+    toast('✅ Аудио добавлено');
+    input.closest('.audio-url-row').remove();
+    if (!window._audioPlayer.track || (track !== 'commentary' && track === 'slow') || (!window._audioPlayer.audio && track === 'commentary')) {
+      window._audioPlayer.track = track;
+    }
+    await audioPlayerRefreshUI();
+    const body2 = document.getElementById('audioPlayerBody');
+    const chevron2 = document.getElementById('audioChevron');
+    if (body2) body2.style.display = 'block';
+    if (chevron2) { chevron2.style.display = ''; chevron2.textContent = '▲'; }
+    audioUpdateSpacer();
+    await audioLoadTrack(track);
+    audioMarkupCheckButton();
+    _audioSyncStoryFlags(track, true);
+  } catch(e) {
+    toast('❌ Ошибка: ' + e.message);
+    if (input) input.disabled = false;
+  }
 }
 
 async function audioLoadFile(event, track) {
