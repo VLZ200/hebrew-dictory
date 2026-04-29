@@ -4115,6 +4115,10 @@ mark.search-hit.active {
         <h3>📌 История версий</h3>
 
         <div style="margin-bottom:16px;padding:14px;background:linear-gradient(135deg,rgba(34,197,94,.1),rgba(96,165,250,.1));border-radius:12px;">
+<div style="font-weight:700;color:var(--green);margin-bottom:8px;">v34.90 — Android: кнопки загрузки аудио через label</div>
+<ul style="margin:0 0 12px;padding-left:18px;font-size:.9rem;">
+  <li>Кнопки «➕ 🐢 Медленно», «➕ 🚶 Нормально», «➕ 📝 Разбор» переделаны в HTML-элементы <code>&lt;label for=...&gt;</code>, связанные напрямую со скрытыми полями выбора файла. Теперь нажатие кнопки активирует файловый пикер напрямую без JS-посредника — Android Chrome больше не должен блокировать открытие файлового менеджера.</li>
+</ul>
 <div style="font-weight:700;color:var(--green);margin-bottom:8px;">v34.89 — Android: убран фильтр типов файлов при загрузке аудио</div>
 <ul style="margin:0 0 12px;padding-left:18px;font-size:.9rem;">
   <li>Убран атрибут <code>accept=</code> у кнопок добавления аудио. На Android Chrome наличие фильтра mime-типов вызывало появление меню «Recorder / Photos» вместо файлового менеджера. Без фильтра открывается стандартный менеджер файлов — пользователь выбирает нужный аудиофайл сам.</li>
@@ -6145,7 +6149,7 @@ function miniRecClearBlob() {
 }
 
 // ==================== VERSION ====================
-const APP_VERSION = 'v34.89';
+const APP_VERSION = 'v34.90';
 const APP_RELEASE_NOTE = 'Android: загрузка аудиофайлов';
 
 // ==================== STATE ====================
@@ -13653,9 +13657,10 @@ function audioUploadBtn(track, meta) {
   if (meta) return `
     <span style="font-size:.78rem;color:var(--text3);">${label}: ${esc(meta.name)}</span>
     <button class="audio-ctrl-btn" onclick="audioDeleteFile('${track}')" style="padding:3px 8px;font-size:.78rem;color:var(--red);">🗑</button>`;
-  return `<button class="audio-ctrl-btn" style="cursor:pointer;" title="Добавить ${label}" onclick="audioUploadTrigger('${track}')">
+  const inputId = track === 'slow' ? 'audioUploadSlow' : track === 'normal' ? 'audioUploadNormal' : 'audioUploadCommentary';
+  return `<label for="${inputId}" class="audio-ctrl-btn" style="cursor:pointer;display:inline-block;" title="Добавить ${label}">
     ➕ ${label}
-  </button>`;
+  </label>`;
 }
 
 function audioPlayerRenderBody(slowMeta, normMeta, commMeta) {
@@ -13715,10 +13720,7 @@ function audioPlayerRenderUploadRow(slowMeta, normMeta, commMeta) {
 }
 
 function audioUploadTrigger(track) {
-  // Use static hidden <input> elements to avoid Android Chrome opening camera/recorder
-  const ids = { slow: 'audioUploadSlow', normal: 'audioUploadNormal', commentary: 'audioUploadCommentary' };
-  const el = document.getElementById(ids[track]);
-  if (el) el.click();
+  // Kept for compatibility — actual upload is triggered via <label for=...> in audioUploadBtn
 }
 
 async function audioLoadFile(event, track) {
